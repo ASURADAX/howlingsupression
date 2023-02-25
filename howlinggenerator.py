@@ -52,16 +52,20 @@ class HowlingTransform(nn.Module):
         howling_out = torch.zeros(x.size())
         conv_len = self.frame_len + self.IR.size(1) - 1
         frame_start = 0
+        print(x.shape)
         for i in range(sample_len):
             cur_frame = x[:, frame_start:frame_start+self.frame_len]
             windowed_frame = self.win * cur_frame
             howling_out[:,frame_start:frame_start+self.frame_len] += windowed_frame
-            conv_frame = np.convolve(windowed_frame.flatten(), self.IR.flatten(), mode="full")
-            ##注意IR可能是双通道的，则windowed_frame.flatten()的长度将是frame_len*2
-            conv_frame = conv_frame[:conv_len]
+            ##注意windowed_frame可能是双通道的，则windowed_frame.flatten()的长度将是frame_len*2
+            conv_frame=np.zeros([x.size(0),conv_len])
+            for j in range(x.size(0)):
+                conv_frame[j]=np.convolve(windowed_frame[j].flatten(), self.IR[0].flatten(), mode="full")                   
+            print(conv_frame.shape)
             frame_start = frame_start + self.hop_len
             if frame_start+conv_len < sample_len:
                 x[:,frame_start:frame_start+conv_len] += conv_frame
+                #assert 1!=1
             else:
                 break
 
