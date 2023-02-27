@@ -50,6 +50,61 @@ class Encoder(nn.Module):
 
         return x, c_mask, attns
 
+class MelEncoder(nn.Module):
+    """
+    Eecoder Network
+    """
+    def __init__(self, num_hidden):
+        """
+        :param num_hidden: dimension of hidden
+        """
+        super(MelEncoder, self).__init__()
+        self.alpha = nn.Parameter(t.ones(1))
+        self.pos_emb = nn.Embedding.from_pretrained(get_sinusoid_encoding_table(1024, num_hidden, padding_idx=0),
+                                                    freeze=True)
+        self.pos_dropout = nn.Dropout(p=0.1)
+        
+        self.encoder_prenet = Prenet(hp.num_mels, num_hidden * 2, num_hidden, p=0.2)
+        self.norm = Linear(num_hidden, num_hidden)
+        self.layers = clones(Attention(num_hidden), 3)
+        self.ffns = clones(FFN(num_hidden), 3)
+
+        #self.selfattn_layers = clones(Attention(num_hidden), 3)
+        #self.dotattn_layers = clones(Attention(num_hidden), 3)
+        #self.ffns = clones(FFN(num_hidden), 3)
+        #self.mel_linear = Linear(num_hidden, hp.num_mels * hp.outputs_per_step)
+        #self.stop_linear = Linear(num_hidden, 1, w_init='sigmoid')
+
+        #self.postconvnet = PostConvNet(num_hidden)
+
+    def forward(self, x, pos):
+        if self.training:
+            c_mask = pos.ne(0).type(t.float)
+            mask = pos.eq(0).unsqueeze(1).repeat(1, x.size(1), 1)
+        else:
+            c_mask, mask = None, None
+
+        # Encoder pre-network
+        x = self.encoder_prenet(x)
+        
+        # Centered position
+        x = self.norm(x)
+
+        # Get positional embedding, apply alpha and add
+        pos = self.pos_emb(pos)
+        x = pos * self.alpha + x
+
+        # Positional dropout
+        x = self.pos_dropout(x)
+
+        # Attention encoder-encoder
+        attns = list()
+        for layer, ffn in zip(self.layers, self.ffns):
+            x, attn = layer(x, x, mask=mask, query_mask=c_mask)
+            x = ffn(x)
+            attns.append(attn)
+
+        return x, c_mask, attns
 
 class MelDecoder(nn.Module):
     """
@@ -77,6 +132,7 @@ class MelDecoder(nn.Module):
 
     def forward(self, memory, decoder_input, c_mask, pos):
         batch_size = memory.size(0)
+        # [bs, frame_len, 80], Note: decoder_input[:,0,:] denotes the <Go> frame
         decoder_len = decoder_input.size(1)
 
         # get decoder mask with triangular matrix
@@ -99,9 +155,11 @@ class MelDecoder(nn.Module):
             m_mask, zero_mask = None, None
 
         # Decoder pre-network
+        # [bs, frame_len, 80] -> [bs, frame_len, num_hidden]
         decoder_input = self.decoder_prenet(decoder_input)
 
         # Centered position
+        # [bs, frame_len, num_hidden] -> [bs, frame_len, num_hidden]
         decoder_input = self.norm(decoder_input)
 
         # Get positional embedding, apply alpha and add
@@ -123,15 +181,20 @@ class MelDecoder(nn.Module):
             attn_dec_list.append(attn_dec)
 
         # Mel linear projection
+        # [bs, frame_len, num_hidden] -> [bs, frame_len, 80]
         mel_out = self.mel_linear(decoder_input)
         
         # Post Mel Network
+        # [bs, frame_len, 80] -> [bs, 80, frame_len]
         postnet_input = mel_out.transpose(1, 2)
+        # [bs, 80, frame_len] -> [bs, 80, frame_len]
         out = self.postconvnet(postnet_input)
         out = postnet_input + out
+        # [bs, 80, frame_len] -> [bs, frame_len, 80]
         out = out.transpose(1, 2)
 
         # Stop tokens
+        # [bs, frame_len, num_hidden] -> [bs, frame_len, 1]
         stop_tokens = self.stop_linear(decoder_input)
 
         return mel_out, out, attn_dot_list, stop_tokens, attn_dec_list
@@ -143,7 +206,7 @@ class Model(nn.Module):
     """
     def __init__(self):
         super(Model, self).__init__()
-        self.encoder = Encoder(hp.embedding_size, hp.hidden_size)
+        self.encoder = MelEncoder(hp.hidden_size)
         self.decoder = MelDecoder(hp.hidden_size)
 
     def forward(self, characters, mel_input, pos_text, pos_mel):
