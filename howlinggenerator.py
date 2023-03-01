@@ -5,9 +5,7 @@ import torchaudio
 import soundfile as sf
 import random
 import numpy as np
-
-sr = 22050
-
+import dnn.hyperparams as hp
 class HowlingTransform(nn.Module):
     def __init__(self, IR, gain_floor=1, gain_ceil=10, frame_len=128, hop_len=None):
         super().__init__()
@@ -52,7 +50,7 @@ class HowlingTransform(nn.Module):
         howling_out = torch.zeros(x.size())
         conv_len = self.frame_len + self.IR.size(1) - 1
         frame_start = 0
-        print(x.shape)
+        #print(x.shape)
         for i in range(sample_len):
             cur_frame = x[:, frame_start:frame_start+self.frame_len]
             windowed_frame = self.win * cur_frame
@@ -83,6 +81,7 @@ class HowlingTransform(nn.Module):
         return x
 
 if __name__ == "__main__":
+    sr = hp.sr
     music, sr1 = torchaudio.load("./sample/MUSIC01.wav")
     music = torchaudio.functional.resample(music, orig_freq=sr1, new_freq=sr)
     IR, sr2 = torchaudio.load("./sample/IR01.wav")

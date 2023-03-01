@@ -5,8 +5,6 @@ import os
 from utils import get_spectrograms
 import hyperparams as hp
 import librosa
-
-wav_path = './sample'
 class PrepareDataset(Dataset):
     """wav to mel dataset."""
 
@@ -33,6 +31,7 @@ class PrepareDataset(Dataset):
         return sample
     
 if __name__ == '__main__':
+    wav_path = './sample'
     dataset = PrepareDataset(wav_path)
     dataloader = DataLoader(dataset, batch_size=1, drop_last=False, num_workers=8)
     from tqdm import tqdm
