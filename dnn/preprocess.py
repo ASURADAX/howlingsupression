@@ -10,6 +10,43 @@ from scipy import signal
 import torch as t
 import math
 
+class HowlingDatasets(Dataset):
+    def __init__(self, source_dir, target_dir):
+        """
+        Args:
+            source_dir (string): Directory with the source data.
+            target_dir (string): Directory with the target data.
+
+        """
+        self.source_dir = source_dir
+        self.target_dir = target_dir
+        # 文件路径名
+        self.source_files = list(map(lambda x: os.path.join(source_dir, x), os.listdir(source_dir)))
+        self.target_files = list(map(lambda x: os.path.join(target_dir, x), os.listdir(target_dir)))
+
+    def load_wav(self, filename):
+        return librosa.load(filename, sr=hp.sr)
+
+    def __len__(self):
+        assert len(self.source_files) == len(self.target_files)
+        return len(self.source_files)
+
+    def __getitem__(self, idx):
+        source_file = self.source_files[idx]
+        target_file = self.target_files[idx]
+
+        source_mel = np.load(source_file)
+        target_mel = np.load(target_file)
+        # add the <Go> frame
+        source_mel_input = np.concatenate([np.zeros([1,hp.num_mels], np.float32), source_mel[:-1,:]], axis=0)
+        target_mel_input = np.concatenate([np.zeros([1,hp.num_mels], np.float32), target_mel[:-1,:]], axis=0)
+        
+        source_pos_mel = np.arange(1, source_mel.shape[0] + 1)
+        target_pos_mel = np.arange(1, target_mel.shape[0] + 1)
+
+        sample = {'source_mel': source_mel, 'target_mel': target_mel, 'source_mel_input':source_mel_input, 'target_mel_input':target_mel_input, 'source_pos_mel':source_pos_mel, 'target_pos_mel':target_pos_mel}
+
+        return sample
 
 class LJDatasets(Dataset):
     """LJSpeech dataset."""
@@ -74,28 +111,42 @@ def collate_fn_transformer(batch):
     # Puts each data field into a tensor with outer dimension batch size
     if isinstance(batch[0], collections.Mapping):
 
-        text = [d['text'] for d in batch]
-        mel = [d['mel'] for d in batch]
-        mel_input = [d['mel_input'] for d in batch]
-        text_length = [d['text_length'] for d in batch]
-        pos_mel = [d['pos_mel'] for d in batch]
-        pos_text= [d['pos_text'] for d in batch]
+        source_mel = [d['source_mel'] for d in batch]
+        target_mel = [d['target_mel'] for d in batch]
+        source_mel_input = [d['source_mel_input'] for d in batch]
+        target_mel_input = [d['target_mel_input'] for d in batch]
+        source_pos_mel = [d['source_pos_mel'] for d in batch]
+        target_pos_mel = [d['target_pos_mel'] for d in batch]
+
+        #text = [d['text'] for d in batch]
+        #mel = [d['mel'] for d in batch]
+        #mel_input = [d['mel_input'] for d in batch]
+        #text_length = [d['text_length'] for d in batch]
+        #pos_mel = [d['pos_mel'] for d in batch]
+        #pos_text= [d['pos_text'] for d in batch]
         
-        text = [i for i,_ in sorted(zip(text, text_length), key=lambda x: x[1], reverse=True)]
-        mel = [i for i, _ in sorted(zip(mel, text_length), key=lambda x: x[1], reverse=True)]
-        mel_input = [i for i, _ in sorted(zip(mel_input, text_length), key=lambda x: x[1], reverse=True)]
-        pos_text = [i for i, _ in sorted(zip(pos_text, text_length), key=lambda x: x[1], reverse=True)]
-        pos_mel = [i for i, _ in sorted(zip(pos_mel, text_length), key=lambda x: x[1], reverse=True)]
-        text_length = sorted(text_length, reverse=True)
+        # 按字符串长度排序
+        #text = [i for i,_ in sorted(zip(text, text_length), key=lambda x: x[1], reverse=True)]
+        #mel = [i for i, _ in sorted(zip(mel, text_length), key=lambda x: x[1], reverse=True)]
+        #mel_input = [i for i, _ in sorted(zip(mel_input, text_length), key=lambda x: x[1], reverse=True)]
+        #pos_text = [i for i, _ in sorted(zip(pos_text, text_length), key=lambda x: x[1], reverse=True)]
+        #pos_mel = [i for i, _ in sorted(zip(pos_mel, text_length), key=lambda x: x[1], reverse=True)]
+        #text_length = sorted(text_length, reverse=True)
         # PAD sequences with largest length of the batch
-        text = _prepare_data(text).astype(np.int32)
-        mel = _pad_mel(mel)
-        mel_input = _pad_mel(mel_input)
-        pos_mel = _prepare_data(pos_mel).astype(np.int32)
-        pos_text = _prepare_data(pos_text).astype(np.int32)
+        source_mel = _pad_mel(source_mel)
+        target_mel = _pad_mel(target_mel)
+        source_mel_input = _pad_mel(source_mel_input)
+        target_mel_input = _pad_mel(target_mel_input)
+        source_pos_mel = _prepare_data(source_pos_mel).astype(np.int32)
+        target_pos_mel = _prepare_data(target_pos_mel).astype(np.int32)
+        #text = _prepare_data(text).astype(np.int32)
+        #mel = _pad_mel(mel)
+        #mel_input = _pad_mel(mel_input)
+        #pos_mel = _prepare_data(pos_mel).astype(np.int32)
+        #pos_text = _prepare_data(pos_text).astype(np.int32)
 
-
-        return t.LongTensor(text), t.FloatTensor(mel), t.FloatTensor(mel_input), t.LongTensor(pos_text), t.LongTensor(pos_mel), t.LongTensor(text_length)
+        return t.FloatTensor(source_mel),t.FloatTensor(target_mel),t.FloatTensor(source_mel_input),t.FloatTensor(target_mel_input),t.LongTensor(source_pos_mel),t.LongTensor(target_pos_mel)
+        #return t.LongTensor(text), t.FloatTensor(mel), t.FloatTensor(mel_input), t.LongTensor(pos_text), t.LongTensor(pos_mel), t.LongTensor(text_length)
 
     raise TypeError(("batch must contain tensors, numbers, dicts or lists; found {}"
                      .format(type(batch[0]))))
