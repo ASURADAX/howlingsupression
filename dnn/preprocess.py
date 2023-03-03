@@ -4,7 +4,7 @@ from torch.utils.data import Dataset, DataLoader
 import os
 import librosa
 import numpy as np
-from text import text_to_sequence
+#from text import text_to_sequence
 import collections
 from scipy import signal
 import torch as t
@@ -190,7 +190,10 @@ def get_param_size(model):
     return params
 
 def get_dataset():
-    return LJDatasets(os.path.join(hp.data_path,'metadata.csv'), os.path.join(hp.data_path,'wavs'))
+    source_dir = './dnn/samples/train_data/source'
+    target_dir = './dnn/samples/train_data/target'
+    return HowlingDatasets(source_dir,target_dir)
+    #return LJDatasets(os.path.join(hp.data_path,'metadata.csv'), os.path.join(hp.data_path,'wavs'))
 
 def get_post_dataset():
     return PostDatasets(os.path.join(hp.data_path,'metadata.csv'), os.path.join(hp.data_path,'wavs'))
