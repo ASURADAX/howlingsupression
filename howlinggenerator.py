@@ -60,6 +60,7 @@ class HowlingTransform(nn.Module):
             for j in range(x.size(0)):
                 conv_frame[j]=np.convolve(windowed_frame[j].flatten(), self.IR[0].flatten(), mode="full")                   
             #print(conv_frame.shape)
+            # 叠加到下一帧
             frame_start = frame_start + self.hop_len
             if frame_start+conv_len < sample_len:
                 x[:,frame_start:frame_start+conv_len] += conv_frame
