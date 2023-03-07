@@ -25,6 +25,7 @@ def split_wav_audio_files(source_path, target_path):
 
         # loop over each split of wav file
         start_frame = 0
+        n = 0
         for num in range(num_splits):
             # get the split audio
             split_signal = signal[:,start_frame:start_frame + split_at_frame]
@@ -33,6 +34,13 @@ def split_wav_audio_files(source_path, target_path):
             sf.write(os.path.join(target_path, '{}_{}.wav'.format(file.split('.')[0], num)), split_signal.numpy().transpose(), sr)
             
             start_frame += split_at_frame
+            n = num + 1
+        # 处理剩余部分
+        if(start_frame<signal.size(1)):
+            split_signal = signal[:,start_frame:]
+            sf.write(os.path.join(target_path, '{}_{}.wav'.format(file.split('.')[0], n)), split_signal.numpy().transpose(), sr)
+
+        
 
 if __name__ == "__main__":
     source_path = './wav'
