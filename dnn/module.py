@@ -317,6 +317,7 @@ class Prenet(nn.Module):
              ('fc2', Linear(self.hidden_size, self.output_size)),
              ('relu2', nn.ReLU()),
              ('dropout2', nn.Dropout(p)),
+             ('linear', Linear(self.output_size, self.output_size))
         ]))
 
     def forward(self, input_):
