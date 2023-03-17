@@ -75,10 +75,18 @@ class HowlingTransform(nn.Module):
         howling_out = torch.maximum(howling_out, -torch.ones(sample_len))
         return howling_out
 
-    def forward(self, x):
-        target_gain = self.get_MSG() + 2
+    def forward(self, x, sr):
+        target_gain = self.get_MSG() + 100
         self.scale_IR(target_gain)
-        x = self.howling(x)
+        h = self.howling(x)
+        # 调整啸叫信号频率和幅度
+        t = np.arange(0, h.size(1)/sr, 1/sr)
+        cyc = 0.25 #控制周期数，值值越大峰越多
+        slope = 10 #控制峰的陡峭程度，值值越大峰越陡
+        tmp = np.abs(np.cos(cyc*np.pi*t))*slope
+        h *= np.cos(2*np.pi*50*t) * np.exp(-tmp)
+        # 叠加啸叫信号
+        x += h
         return x
 
 if __name__ == "__main__":
@@ -89,6 +97,5 @@ if __name__ == "__main__":
     IR = torchaudio.functional.resample(IR, orig_freq=sr2, new_freq=sr)
 
     transformer = HowlingTransform(IR)
-    s = transformer(music)
-
-    sf.write("./sample/s_howling_trans02.wav", s.numpy().flatten(), sr)
+    s = transformer(music,sr)
+    sf.write("./sample/s_howling_trans03.wav", s.numpy().flatten(), sr)
