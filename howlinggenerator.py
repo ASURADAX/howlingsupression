@@ -1,5 +1,6 @@
 from scipy import signal
 import torch
+import os
 import torch.nn as nn
 import torchaudio
 import soundfile as sf
@@ -80,22 +81,42 @@ class HowlingTransform(nn.Module):
         self.scale_IR(target_gain)
         h = self.howling(x)
         # 调整啸叫信号频率和幅度
-        t = np.arange(0, h.size(1)/sr, 1/sr)
-        cyc = 0.25 #控制周期数，值值越大峰越多
-        slope = 10 #控制峰的陡峭程度，值值越大峰越陡
+        t = np.arange(0, h.size(1))
+        cyc = 0.5 # 控制周期数，值越大峰越多
+        slope = 10 # 控制峰的陡峭程度，值越大峰越陡
         tmp = np.abs(np.cos(cyc*np.pi*t))*slope
-        h *= np.cos(2*np.pi*50*t) * np.exp(-tmp)
+        ttmp = np.cos(2*np.pi*50*t) * np.exp(-tmp)
+        h *= ttmp
         # 叠加啸叫信号
         x += h
         return x
 
-if __name__ == "__main__":
-    sr = hp.sr
-    music, sr1 = torchaudio.load("./sample/MUSIC01.wav")
-    music = torchaudio.functional.resample(music, orig_freq=sr1, new_freq=sr)
-    IR, sr2 = torchaudio.load("./sample/IR01.wav")
-    IR = torchaudio.functional.resample(IR, orig_freq=sr2, new_freq=sr)
-
+def add_howling(source_path, target_path):
+    # get the list of wav files in the source path
+    wav_files = os.listdir(source_path)
+    
+    # get the IR signal
+    IR, sr = torchaudio.load("./sample/IR01.wav")
+    IR = torchaudio.functional.resample(IR, orig_freq=sr, new_freq=hp.sr)
+    
+    # initialize the HowlingTransform
     transformer = HowlingTransform(IR)
-    s = transformer(music,sr)
-    sf.write("./sample/s_howling_trans03.wav", s.numpy().flatten(), sr)
+    i=0
+    # loop over each wav file
+    for file in wav_files:
+        # load the audio file
+        signal, sr = torchaudio.load(os.path.join(source_path, file))
+        signal = torchaudio.functional.resample(signal, orig_freq=sr, new_freq=hp.sr)
+        
+        # add howling to the audio file
+        signal = transformer(signal,hp.sr)
+        i=i+1
+        print(i)
+        #save the audio
+        sf.write(os.path.join(target_path, 'h_{}.wav'.format(file.split('.')[0])), signal.numpy().transpose(), hp.sr)
+
+if __name__ == "__main__":
+    source_path = './split'
+    target_path = './howling'
+    add_howling(source_path,target_path)
+    

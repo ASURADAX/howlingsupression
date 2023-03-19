@@ -40,8 +40,6 @@ def split_wav_audio_files(source_path, target_path):
             split_signal = signal[:,start_frame:]
             sf.write(os.path.join(target_path, '{}_{}.wav'.format(file.split('.')[0], n)), split_signal.numpy().transpose(), sr)
 
-        
-
 if __name__ == "__main__":
     source_path = './wav'
     target_path = './split'
