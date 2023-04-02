@@ -64,9 +64,6 @@ def main():
             if global_step % 100 == 1:
                 
                 for i, prob in enumerate(attn_probs):
-                    print(prob[1*16].shape)
-                    print(prob.shape)
-                    assert 1!=1
                     num_h = prob.size(0)
                     for j in range(4):
                         x = vutils.make_grid(prob[j*16] * 255)
