@@ -2,3 +2,4 @@
 *.wav
 *.npy
 *.tar
+logs/
