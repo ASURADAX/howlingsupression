@@ -16,7 +16,11 @@ class HowlingDatasets(Dataset):
         Args:
             source_dir (string): Directory with the source data.
             target_dir (string): Directory with the target data.
-
+        the naming convention:
+            source_dir:
+                h_cv_1.pt.npy
+            target_dir:
+                cv_1.pt.npy
         """
         self.source_dir = source_dir
         self.target_dir = target_dir
@@ -43,10 +47,6 @@ class HowlingDatasets(Dataset):
         file_name, index = self.file_list[idx]
         source_file = os.path.join(self.source_dir, file_name)
         target_file = os.path.join(self.target_dir, f"cv_{index}.pt.npy")
-        print('//')
-        print(source_file)
-        print(target_file)
-        print('//')
 
         source_mel = np.load(source_file)
         target_mel = np.load(target_file)
@@ -61,60 +61,45 @@ class HowlingDatasets(Dataset):
 
         return sample
 
-class LJDatasets(Dataset):
-    """LJSpeech dataset."""
 
-    def __init__(self, csv_file, root_dir):
-        """
-        Args:
-            csv_file (string): Path to the csv file with annotations.
-            root_dir (string): Directory with all the wavs.
-
-        """
-        self.landmarks_frame = pd.read_csv(csv_file, sep='|', header=None)
-        self.root_dir = root_dir
-
-    def load_wav(self, filename):
-        return librosa.load(filename, sr=hp.sample_rate)
-
-    def __len__(self):
-        return len(self.landmarks_frame)
-
-    def __getitem__(self, idx):
-        wav_name = os.path.join(self.root_dir, self.landmarks_frame.ix[idx, 0]) + '.wav'
-        text = self.landmarks_frame.ix[idx, 1]
-
-        text = np.asarray(text_to_sequence(text, [hp.cleaners]), dtype=np.int32)
-        mel = np.load(wav_name[:-4] + '.pt.npy')
-        mel_input = np.concatenate([np.zeros([1,hp.num_mels], np.float32), mel[:-1,:]], axis=0)
-        text_length = len(text)
-        pos_text = np.arange(1, text_length + 1)
-        pos_mel = np.arange(1, mel.shape[0] + 1)
-
-        sample = {'text': text, 'mel': mel, 'text_length':text_length, 'mel_input':mel_input, 'pos_mel':pos_mel, 'pos_text':pos_text}
-
-        return sample
-    
 class PostDatasets(Dataset):
-    """LJSpeech dataset."""
+    """mel to mag dataset."""
 
-    def __init__(self, csv_file, root_dir):
+    def __init__(self, mel_dir, mag_dir):
         """
         Args:
-            csv_file (string): Path to the csv file with annotations.
-            root_dir (string): Directory with all the wavs.
-
+            mel_dir (string): Directory with all the mels.
+            mag_dir (string): Directory with all the mags.
+        the naming convention:
+            mel_dir:
+                cv_1.pt.npy
+            target_dir:
+                cv_1.mag.npy
         """
-        self.landmarks_frame = pd.read_csv(csv_file, sep='|', header=None)
-        self.root_dir = root_dir
+        self.mel_dir=mel_dir
+        self.mag_dir=mag_dir
+        self.file_list = self._get_file_list()
+
+    def _get_file_list(self):
+        # Get a list of file names that match the naming convention
+        file_list = []
+        for file_name in os.listdir(self.mel_dir):
+            if file_name.startswith("cv_") and file_name.endswith(".pt.npy"):
+                index = file_name.split("_")[-1].split(".")[0]
+                target_file = os.path.join(self.mag_dir, f"cv_{index}.mag.npy")
+                if os.path.exists(target_file):
+                    file_list.append((file_name, index))
+        return file_list
 
     def __len__(self):
-        return len(self.landmarks_frame)
+        return len(self.file_list)
 
     def __getitem__(self, idx):
-        wav_name = os.path.join(self.root_dir, self.landmarks_frame.ix[idx, 0]) + '.wav'
-        mel = np.load(wav_name[:-4] + '.pt.npy')
-        mag = np.load(wav_name[:-4] + '.mag.npy')
+        file_name, index = self.file_list[idx]
+        mel_file = os.path.join(self.mel_dir, file_name)
+        mag_file = os.path.join(self.mag_dir, f"cv_{index}.mag.npy")
+        mel = np.load(mel_file)
+        mag = np.load(mag_file)
         sample = {'mel':mel, 'mag':mag}
 
         return sample
@@ -211,7 +196,10 @@ def get_dataset():
     #return LJDatasets(os.path.join(hp.data_path,'metadata.csv'), os.path.join(hp.data_path,'wavs'))
 
 def get_post_dataset():
-    return PostDatasets(os.path.join(hp.data_path,'metadata.csv'), os.path.join(hp.data_path,'wavs'))
+    mel_dir = './wav/pt'
+    mag_dir = './wav/mag'
+    return PostDatasets(mel_dir=mel_dir,mag_dir=mag_dir)
+    #return PostDatasets(os.path.join(hp.data_path,'metadata.csv'), os.path.join(hp.data_path,'wavs'))
 
 def _pad_mel(inputs):
     _pad = 0
@@ -222,9 +210,9 @@ def _pad_mel(inputs):
     return np.stack([_pad_one(x, max_len) for x in inputs])
 
 if __name__ == '__main__':
-    dataset = get_dataset()
+    dataset = get_post_dataset()
     dataloader = DataLoader(dataset, batch_size=1, drop_last=False, num_workers=1)
-    from tqdm import tqdm
-    pbar = tqdm(dataloader)
+    #from tqdm import tqdm
+    pbar = dataloader
     for d in pbar:
         pass
