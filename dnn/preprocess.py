@@ -20,20 +20,33 @@ class HowlingDatasets(Dataset):
         """
         self.source_dir = source_dir
         self.target_dir = target_dir
-        # 文件路径名
-        self.source_files = list(map(lambda x: os.path.join(source_dir, x), os.listdir(source_dir)))
-        self.target_files = list(map(lambda x: os.path.join(target_dir, x), os.listdir(target_dir)))
+        self.file_list = self._get_file_list()
 
     def load_wav(self, filename):
         return librosa.load(filename, sr=hp.sr)
 
     def __len__(self):
-        assert len(self.source_files) == len(self.target_files)
-        return len(self.source_files)
+        return len(self.file_list)
+
+    def _get_file_list(self):
+        # Get a list of file names that match the naming convention
+        file_list = []
+        for file_name in os.listdir(self.source_dir):
+            if file_name.startswith("h_cv_") and file_name.endswith(".pt.npy"):
+                index = file_name.split("_")[-1].split(".")[0]
+                target_file = os.path.join(self.target_dir, f"cv_{index}.pt.npy")
+                if os.path.exists(target_file):
+                    file_list.append((file_name, index))
+        return file_list
 
     def __getitem__(self, idx):
-        source_file = self.source_files[idx]
-        target_file = self.target_files[idx]
+        file_name, index = self.file_list[idx]
+        source_file = os.path.join(self.source_dir, file_name)
+        target_file = os.path.join(self.target_dir, f"cv_{index}.pt.npy")
+        print('//')
+        print(source_file)
+        print(target_file)
+        print('//')
 
         source_mel = np.load(source_file)
         target_mel = np.load(target_file)
@@ -190,8 +203,10 @@ def get_param_size(model):
     return params
 
 def get_dataset():
-    source_dir = './dnn/samples/train_data/source'
-    target_dir = './dnn/samples/train_data/target'
+    source_dir = './howling/pt'
+    target_dir = './wav/pt'
+    # source_dir = './dnn/samples/train_data/source'
+    # target_dir = './dnn/samples/train_data/target'
     return HowlingDatasets(source_dir,target_dir)
     #return LJDatasets(os.path.join(hp.data_path,'metadata.csv'), os.path.join(hp.data_path,'wavs'))
 
@@ -206,3 +221,10 @@ def _pad_mel(inputs):
     max_len = max((x.shape[0] for x in inputs))
     return np.stack([_pad_one(x, max_len) for x in inputs])
 
+if __name__ == '__main__':
+    dataset = get_dataset()
+    dataloader = DataLoader(dataset, batch_size=1, drop_last=False, num_workers=1)
+    from tqdm import tqdm
+    pbar = tqdm(dataloader)
+    for d in pbar:
+        pass
