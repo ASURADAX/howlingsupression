@@ -4,7 +4,13 @@ from tensorboardX import SummaryWriter
 import torchvision.utils as vutils
 import os
 from tqdm import tqdm
-
+# 禁用warning 
+# cryptographydeprecationWarning blowfish has been deprecated 
+# add code as follows in python file as follows
+# D:\Anaconda3\lib\site-packages\paramiko\transport.py
+# import warnings
+# from cryptography.utils import CryptographyDeprecationWarning
+# warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
 def adjust_learning_rate(optimizer, step_num, warmup_step=4000):
     lr = hp.lr * warmup_step**0.5 * min(step_num * warmup_step**-1.5, step_num**-0.5)
     for param_group in optimizer.param_groups:
