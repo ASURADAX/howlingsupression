@@ -23,10 +23,15 @@ def main():
 
     writer = SummaryWriter('p_logs')
 
+    best_loss=float("inf")
+    best_model = None
+    best_optimizer = None
+    best_global_step = -1
     for epoch in range(hp.epochs):
 
         dataloader = DataLoader(dataset, batch_size=20, shuffle=False, collate_fn=collate_fn_postnet, drop_last=True, num_workers=8)
         pbar = tqdm(dataloader)
+        t_loss=0
         for i, data in enumerate(pbar):
             pbar.set_description("Processing at epoch %d"%epoch)
             global_step += 1
@@ -41,7 +46,8 @@ def main():
             mag_pred = m.forward(mel)
 
             loss = nn.L1Loss()(mag_pred, mag)
-            
+            t_loss=t_loss+loss
+
             writer.add_scalars('training_loss',{
                     'loss':loss,
                 }, global_step)
@@ -60,9 +66,17 @@ def main():
                                  'optimizer':optimizer.state_dict()},
                                 os.path.join(hp.checkpoint_path,'checkpoint_postnet_%d.pth.tar' % global_step))
 
+        if(best_loss>t_loss):
+            best_model=copy.deepcopy(m.state_dict())
+            best_optimizer=copy.deepcopy(optimizer.state_dict())
+            best_global_step=global_step
+            best_loss=t_loss  
             
-            
-
+    if (best_global_step >= 0):
+        t.save({'model':best_model,
+                        'optimizer':best_optimizer},
+                    os.path.join(hp.checkpoint_path,'checkpoint_postnet_%d.pth.tar' % best_global_step))
+        
 
 if __name__ == '__main__':
     main()
