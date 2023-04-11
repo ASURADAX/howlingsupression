@@ -255,7 +255,6 @@ class Attention(nn.Module):
         batch_size = memory.size(0)
         seq_k = memory.size(1)
         seq_q = decoder_input.size(1)
-        
         # Repeat masks h times
         if query_mask is not None:
             query_mask = query_mask.unsqueeze(-1).repeat(1, 1, seq_k)
@@ -274,7 +273,6 @@ class Attention(nn.Module):
 
         # Get context vector
         result, attns = self.multihead(key, value, query, mask=mask, query_mask=query_mask)
-
         # Concatenate all multihead context vector
         result = result.view(self.h, batch_size, seq_q, self.num_hidden_per_attn)
         result = result.permute(1, 2, 0, 3).contiguous().view(batch_size, seq_q, -1)

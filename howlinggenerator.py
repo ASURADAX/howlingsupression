@@ -116,7 +116,7 @@ def add_howling(source_path, target_path):
         sf.write(os.path.join(target_path, 'h_{}.wav'.format(file.split('.')[0])), signal.numpy().transpose(), hp.sr)
 
 if __name__ == "__main__":
-    source_path = './split'
+    source_path = './wav'
     target_path = './howling'
     add_howling(source_path,target_path)
     

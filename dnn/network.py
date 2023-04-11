@@ -96,14 +96,12 @@ class MelEncoder(nn.Module):
 
         # Positional dropout
         x = self.pos_dropout(x)
-
         # Attention encoder-encoder
         attns = list()
         for layer, ffn in zip(self.layers, self.ffns):
             x, attn = layer(x, x, mask=mask, query_mask=c_mask)
             x = ffn(x)
             attns.append(attn)
-
         return x, c_mask, attns
 
 class MelDecoder(nn.Module):

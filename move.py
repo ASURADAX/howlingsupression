@@ -2,7 +2,7 @@ import os
 import glob
 import shutil
 
-path = './wav'     #原始文件路径
+path = './wav/wav'     #原始文件路径
 path_new_pt = './wav/pt'   #目标文件路径
 path_new_mag = './wav/mag'   #目标文件路径
 list_name = os.listdir(path)

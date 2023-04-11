@@ -20,7 +20,6 @@ class PrepareDataset(Dataset):
 
     def __getitem__(self, idx):
         wav_file = self.wav_files[idx]
-        
         mel, mag = get_spectrograms(wav_file)
 
         np.save(wav_file[:-4] + '.pt', mel)
@@ -31,7 +30,7 @@ class PrepareDataset(Dataset):
         return sample
     
 if __name__ == '__main__':
-    wav_path = './sample'
+    wav_path = './howling/wav'
     dataset = PrepareDataset(wav_path)
     dataloader = DataLoader(dataset, batch_size=1, drop_last=False, num_workers=8)
     from tqdm import tqdm
