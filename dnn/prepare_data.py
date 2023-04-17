@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 import os
-from utils import get_spectrograms
-import hyperparams as hp
+from dnn.utils import get_spectrograms
+import dnn.hyperparams as hp
 import librosa
 class PrepareDataset(Dataset):
     """wav to mel dataset."""
