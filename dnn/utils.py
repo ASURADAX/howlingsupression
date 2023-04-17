@@ -2,7 +2,7 @@ import numpy as np
 import librosa
 import os, copy
 from scipy import signal
-import hyperparams as hp
+import dnn.hyperparams as hp
 import torch as t
 
 def get_spectrograms(fpath):
