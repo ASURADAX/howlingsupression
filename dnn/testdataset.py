@@ -8,6 +8,7 @@ import numpy as np
 import collections
 from scipy import signal
 import torch as t
+import torchaudio
 import math
 
 class TestDatasets(Dataset):
@@ -27,7 +28,9 @@ class TestDatasets(Dataset):
         self.file_list = self._get_file_list()
     
     def load_wav(self, filename):
-        return librosa.load(filename, sr=hp.sr)
+        s ,sr = torchaudio.load(filename)
+        s = torchaudio.functional.resample(s, orig_freq=sr, new_freq=hp.sr)
+        return s
 
     def __len__(self):
         return len(self.file_list)
@@ -49,7 +52,7 @@ class TestDatasets(Dataset):
         target_file = os.path.join(self.target_dir, f"cv_{index}.wav")
 
         source_mel = np.load(source_file)
-        target_wav, sr = self.load_wav(target_file)
+        target_wav = self.load_wav(target_file)
         # add the <Go> frame
         source_mel_input = np.concatenate([np.zeros([1,hp.num_mels], np.float32), source_mel[:-1,:]], axis=0)
 
