@@ -4,16 +4,17 @@ from pystoi import stoi
 from utils import spectrogram2wav
 from scipy.io.wavfile import write
 import hyperparams as hp
-from text import text_to_sequence
 import numpy as np
 from network import ModelPostNet, Model
 from collections import OrderedDict
 from tqdm import tqdm
-import argparse
+import resampy
+import soundfile as sf
+import os
 from testdataset import get_testset, DataLoader, collate_fn_transformer_test
 
 def load_checkpoint(step, model_name="transformer"):
-    state_dict = t.load('./checkpoint/checkpoint_%s_%d.pth.tar'% (model_name, step))   
+    state_dict = t.load('./checkpoint/checkpoint_%s_%d.pth.tar'% (model_name, step),map_location=t.device('cpu'))   
     new_state_dict = OrderedDict()
     for k, value in state_dict['model'].items():
         key = k[7:]
@@ -48,7 +49,6 @@ def synthesis():
             wav = spectrogram2wav(mag_pred.squeeze(0).cpu().numpy())
             #将wav数据转化为tensor
             wav_tensor = t.FloatTensor(wav)
-
             wav_tensor = wav_tensor.squeeze()
             target_wav = target_wav.squeeze()
             # keep length same (output label)
@@ -71,7 +71,7 @@ def synthesis():
 
             count += 1
             #将wav数据保存为wav文件
-            #write(hp.sample_path + "/test.wav", hp.sr, target_wav_restored)
+            sf.write(os.path.join("./dnn/samples", 'h_{}.wav'.format(i)), wav_restored.transpose(), hp.sr)
         avg_eval_loss = total_eval_loss / count
         return avg_eval_loss, total_stoi / count, total_pesq / count, total_snr / count
 
@@ -79,8 +79,9 @@ def synthesis():
 #helper functions
 ###
 def get_pesq(ref, deg, sr):
-
-    score = pesq(sr, ref, deg, 'wb')
+    ref = resampy.resample(ref, sr_orig=hp.sr, sr_new=16000)
+    deg = resampy.resample(deg, sr_orig=hp.sr, sr_new=16000)
+    score = pesq(16000, ref, deg, 'wb')
 
     return score
 
@@ -99,3 +100,6 @@ def snr(s, s_p):
         s_p: processed speech
     """
     return 10.0 * np.log10(np.sum(s ** 2) / np.sum((s_p - s) ** 2))
+
+if __name__ == '__main__':
+    synthesis()
