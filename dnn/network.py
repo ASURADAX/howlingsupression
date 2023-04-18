@@ -212,6 +212,26 @@ class Model(nn.Module):
         mel_output, postnet_output, attn_probs, stop_preds, attns_dec = self.decoder.forward(memory, target_mel, c_mask,
                                                                                              pos=target_pos_mel)
         return mel_output, postnet_output, attn_probs, stop_preds, attns_enc, attns_dec
+    
+    def inference(self, source_mel, source_pos_mel):
+        self.encoder.eval()
+        self.decoder.eval()
+        max_decoder_steps = max((len(x) for x in source_pos_mel))
+        bs = source_mel.shape[0]
+        with t.no_grad():
+            memory, c_mask, attns_enc = self.encoder.forward(source_mel, source_pos_mel)
+            mel_output = t.zeros((bs, 1, hp.num_mels))
+            postnet_output = t.zeros((bs, 1, hp.num_mels))
+            stop_preds = t.zeros((bs, 1, 1))
+            for i in range(max_decoder_steps):
+                pos_mel = t.arange(1,mel_output.size(1)+1).unsqueeze(0)
+                mel_output_step, postnet_output_step, attn_probs, stop_preds_step, attns_dec = self.decoder.forward(memory, mel_output, c_mask, pos=pos_mel)
+                mel_output = t.cat((mel_output, mel_output_step[:, -1:, :]), dim=1)
+                postnet_output = t.cat((postnet_output, postnet_output_step[:, -1:, :]), dim=1)
+                stop_preds = t.cat((stop_preds, stop_preds_step[:, -1:, :]), dim=1)
+                #if stop_preds[:, -1] > 0.5:
+                #    break
+        return mel_output[:, 1:, :], postnet_output[:, 1:, :], attn_probs, stop_preds, attns_enc, attns_dec
 
     def forward_0(self, characters, mel_input, pos_text, pos_mel):
         memory, c_mask, attns_enc = self.encoder.forward(characters, pos=pos_text)
