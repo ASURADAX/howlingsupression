@@ -2,7 +2,7 @@ import torch as t
 from pesq import pesq
 from pystoi import stoi
 from utils import spectrogram2wav
-from scipy.io.wavfile import write
+#from scipy.io.wavfile import write
 import hyperparams as hp
 import numpy as np
 from network import ModelPostNet, Model
@@ -12,6 +12,7 @@ import resampy
 import soundfile as sf
 import os
 from testdataset import get_testset, DataLoader, collate_fn_transformer_test
+from tensorboardX import SummaryWriter
 
 def load_checkpoint(step, model_name="transformer"):
     state_dict = t.load('./checkpoint/checkpoint_%s_%d.pth.tar'% (model_name, step),map_location=t.device('cpu'))   
@@ -23,6 +24,8 @@ def load_checkpoint(step, model_name="transformer"):
     return new_state_dict
 
 def synthesis():
+    writer = SummaryWriter('e_logs')
+
     m = Model()
     m_post = ModelPostNet()
 
@@ -65,12 +68,18 @@ def synthesis():
             st = get_stoi(target_wav_restored, wav_restored, hp.sr)
             pe = get_pesq(target_wav_restored, wav_restored, hp.sr)
             sn = snr(target_wav_restored, wav_restored)
+            
             total_pesq += pe
             total_snr += sn
             total_stoi += st
-
             count += 1
+            writer.add_scalars('metrics',{
+                    'stoi':st,
+                    'pesq':pe,
+                    'snr':sn,
+                }, count)
             #将wav数据保存为wav文件
+            sf.write(os.path.join("./dnn/samples", 'c_{}.wav'.format(i)),target_wav_restored.transpose(), hp.sr)
             sf.write(os.path.join("./dnn/samples", 'h_{}.wav'.format(i)), wav_restored.transpose(), hp.sr)
         avg_eval_loss = total_eval_loss / count
         return avg_eval_loss, total_stoi / count, total_pesq / count, total_snr / count
@@ -102,4 +111,10 @@ def snr(s, s_p):
     return 10.0 * np.log10(np.sum(s ** 2) / np.sum((s_p - s) ** 2))
 
 if __name__ == '__main__':
-    synthesis()
+    loss,st,pe,sn = synthesis()
+    print('=======')
+    print(loss) #0.008159851946402341
+    print(st) #0.17373112025881976
+    print(pe) #1.062848440806071
+    print(sn) #-3.588075748334328
+    print('=======')
