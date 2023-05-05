@@ -20,16 +20,17 @@ def load_checkpoint(step, model_name="transformer"):
     for k, value in state_dict['model'].items():
         key = k[7:]
         new_state_dict[key] = value
-
+ 
     return new_state_dict
 
 def synthesis():
-    writer = SummaryWriter('e_logs')
+    writer = SummaryWriter('mse_e_logs')
 
     m = Model()
     m_post = ModelPostNet()
-
-    m.load_state_dict(load_checkpoint(98650, "transformer"))
+    #98650 l1loss
+    #99910 mseloss
+    m.load_state_dict(load_checkpoint(99910, "transformer"))
     m_post.load_state_dict(load_checkpoint(98340, "postnet"))
 
     dataset = get_testset()
@@ -113,8 +114,8 @@ def snr(s, s_p):
 if __name__ == '__main__':
     loss,st,pe,sn = synthesis()
     print('=======')
-    print(loss) #0.008159851946402341
-    print(st) #0.17373112025881976
-    print(pe) #1.062848440806071
-    print(sn) #-3.588075748334328
+    print(loss) #0.008159851946402341 #0.006610008410643786
+    print(st) #0.17373112025881976 #0.18716116640033464
+    print(pe) #1.062848440806071 #1.1307512164115905
+    print(sn) #-3.588075748334328 #-2.583868389328321
     print('=======')
