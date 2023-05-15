@@ -34,13 +34,19 @@ class HowlingTransform(nn.Module):
         return MSG
 
     def scale_IR(self, target_gain):
+        # 对IR进行傅里叶变换，得到其频谱(ir_spec)
         ir_spec = torch.fft.rfft(self.IR)
+        # 计算频谱的幅度(ir_mag)
         ir_mag = torch.abs(ir_spec)
-
+        # 计算IR的平均幅度(MLG)
         MLG = torch.mean(torch.abs(ir_mag) ** 2)
+        # 计算IR的平均增益(mean_gain)，即将平均幅度转换为分贝(dB)的值
         mean_gain = 10 * torch.log10(MLG)
+        # 计算需要调整的增益(reqdBLoss)，即目标增益与平均增益之差
         reqdBLoss = target_gain - mean_gain
+        # 根据需要调整的增益，计算缩放因子(factor)，使得IR的平均增益达到目标增益。
         factor = 0.5 ** (reqdBLoss / 6)
+        # 将IR除以缩放因子，即可完成音量调整
         self.IR = self.IR / factor
 
     def get_gain(self):
