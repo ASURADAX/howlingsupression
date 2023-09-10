@@ -18,7 +18,7 @@ def load_checkpoint(step, model_name="transformer"):
     state_dict = t.load('./checkpoint/checkpoint_%s_%d.pth.tar'% (model_name, step),map_location=t.device('cpu'))   
     new_state_dict = OrderedDict()
     for k, value in state_dict['model'].items():
-        key = k[7:]
+        key = k[7:] # m = nn.DataParallel(Model().cuda())会引入前缀module.
         new_state_dict[key] = value
  
     return new_state_dict
